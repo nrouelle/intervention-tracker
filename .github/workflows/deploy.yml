@@ -33,13 +33,23 @@ jobs:
       run: |
         mkdir -p deploy
 
-        # Copier le backend (sans node_modules, on les copiera séparément)
+        # Copier le backend complet
         cp -r backend deploy/
 
-        # Copier le frontend buildé
+        # Copier le frontend buildé (le dossier dist contient déjà tout)
         mkdir -p deploy/frontend
-        cp -r frontend/dist deploy/frontend/
-        cp frontend/package.json deploy/frontend/
+        cp -r frontend/dist deploy/frontend/dist
+
+        # Copier aussi les fichiers de configuration si nécessaire
+        if [ -f frontend/package.json ]; then
+          cp frontend/package.json deploy/frontend/
+        fi
+
+        # Vérifier que le build existe
+        if [ ! -d "frontend/dist" ]; then
+          echo "❌ Erreur: le dossier frontend/dist n'existe pas"
+          exit 1
+        fi
 
         # Créer une archive
         tar -czf deploy.tar.gz -C deploy .

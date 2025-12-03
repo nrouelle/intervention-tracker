@@ -8,13 +8,18 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["freelance", "tracking", "interventions"],
+  "keywords": [
+    "freelance",
+    "tracking",
+    "interventions"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
     "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2"
   }
 }

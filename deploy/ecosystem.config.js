@@ -9,7 +9,7 @@ module.exports = {
     max_memory_restart: '500M',
     env: {
       NODE_ENV: 'production',
-      PORT: 3001,
+      PORT: 3011,
       JWT_SECRET: 'CHANGEZ_MOI_EN_PRODUCTION'  // À modifier via variable d'environnement
     },
     error_file: '/var/log/pm2/intervention-tracker-error.log',
