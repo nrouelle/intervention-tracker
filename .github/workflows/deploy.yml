@@ -6,14 +6,49 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Deploy to VPS
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci --production
+
+    - name: Install frontend dependencies and build
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+
+        # Copier le backend (sans node_modules, on les copiera séparément)
+        cp -r backend deploy/
+
+        # Copier le frontend buildé
+        mkdir -p deploy/frontend
+        cp -r frontend/dist deploy/frontend/
+        cp frontend/package.json deploy/frontend/
+
+        # Créer une archive
+        tar -czf deploy.tar.gz -C deploy .
+
+    - name: Backup data on VPS
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.VPS_HOST }}
@@ -21,38 +56,59 @@ jobs:
         key: ${{ secrets.VPS_SSH_KEY }}
         port: ${{ secrets.VPS_PORT }}
         script: |
-          # Aller dans le dossier de l'application
-          cd /var/www/intervention-tracker
-          
-          # Sauvegarder les données avant de tirer les changements
-          if [ -d "backend/data" ]; then
-            cp -r backend/data /tmp/intervention-tracker-backup
+          # Créer le dossier de l'application s'il n'existe pas
+          mkdir -p /var/www/intervention-tracker
+
+          # Sauvegarder les données existantes
+          if [ -d "/var/www/intervention-tracker/backend/data" ]; then
+            echo "Sauvegarde des données..."
+            mkdir -p /tmp/intervention-tracker-backup
+            cp -r /var/www/intervention-tracker/backend/data /tmp/intervention-tracker-backup/
           fi
-          
-          # Tirer les derniers changements
-          git pull origin main
-          
+
+    - name: Copy files to VPS
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: ${{ secrets.VPS_PORT }}
+        source: "deploy.tar.gz"
+        target: "/tmp/"
+
+    - name: Deploy on VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: ${{ secrets.VPS_PORT }}
+        script: |
+          # Extraire l'archive
+          cd /var/www/intervention-tracker
+          tar -xzf /tmp/deploy.tar.gz
+          rm /tmp/deploy.tar.gz
+
           # Restaurer les données
-          if [ -d "/tmp/intervention-tracker-backup" ]; then
-            cp -r /tmp/intervention-tracker-backup/* backend/data/
+          if [ -d "/tmp/intervention-tracker-backup/data" ]; then
+            echo "Restauration des données..."
+            mkdir -p backend/data
+            cp -r /tmp/intervention-tracker-backup/data/* backend/data/
             rm -rf /tmp/intervention-tracker-backup
           fi
-          
-          # Installer les dépendances backend
-          cd backend
-          npm install --production
-          cd ..
-          
-          # Installer les dépendances frontend et build
-          cd frontend
-          npm install
-          npm run build
-          cd ..
-          
+
+          # S'assurer que le dossier data existe
+          mkdir -p backend/data
+
+          # Définir les permissions appropriées
+          chmod -R 755 backend
+          chmod -R 755 frontend
+
           # Redémarrer l'application avec PM2
-          pm2 restart intervention-tracker-backend || pm2 start backend/server.js --name intervention-tracker-backend
-          
+          cd backend
+          pm2 restart intervention-tracker-backend || pm2 start server.js --name intervention-tracker-backend
+
           # Vérifier le statut
           pm2 status
-          
+
           echo "✅ Déploiement terminé avec succès!"
