@@ -80,28 +80,38 @@ jobs:
         key: ${{ secrets.VPS_SSH_KEY }}
         port: ${{ secrets.VPS_PORT }}
         script: |
-          # Extraire l'archive
-          cd /var/www/intervention-tracker
+          # Extraire l'archive dans un dossier temporaire
+          mkdir -p /tmp/intervention-tracker-deploy
+          cd /tmp/intervention-tracker-deploy
           tar -xzf /tmp/deploy.tar.gz
           rm /tmp/deploy.tar.gz
 
-          # Restaurer les données
+          # Créer le dossier de destination s'il n'existe pas
+          sudo mkdir -p /var/www/intervention-tracker
+
+          # Restaurer les données avant de copier les nouveaux fichiers
           if [ -d "/tmp/intervention-tracker-backup/data" ]; then
-            echo "Restauration des données..."
-            mkdir -p backend/data
-            cp -r /tmp/intervention-tracker-backup/data/* backend/data/
-            rm -rf /tmp/intervention-tracker-backup
+            echo "Sauvegarde temporaire des données..."
+            cp -r /tmp/intervention-tracker-backup/data /tmp/intervention-tracker-deploy/backend/
           fi
 
-          # S'assurer que le dossier data existe
-          mkdir -p backend/data
+          # Arrêter l'application avant de remplacer les fichiers
+          pm2 stop intervention-tracker-backend || true
 
-          # Définir les permissions appropriées
-          chmod -R 755 backend
-          chmod -R 755 frontend
+          # Remplacer les fichiers (avec sudo si nécessaire)
+          sudo rsync -av --delete /tmp/intervention-tracker-deploy/ /var/www/intervention-tracker/
+
+          # Nettoyer les backups
+          rm -rf /tmp/intervention-tracker-backup
+          rm -rf /tmp/intervention-tracker-deploy
+
+          # S'assurer que le dossier data existe avec les bonnes permissions
+          sudo mkdir -p /var/www/intervention-tracker/backend/data
+          sudo chown -R $USER:$USER /var/www/intervention-tracker
+          sudo chmod -R 755 /var/www/intervention-tracker
 
           # Redémarrer l'application avec PM2
-          cd backend
+          cd /var/www/intervention-tracker/backend
           pm2 restart intervention-tracker-backend || pm2 start server.js --name intervention-tracker-backend
 
           # Vérifier le statut
