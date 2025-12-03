@@ -1,0 +1,58 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: ${{ secrets.VPS_PORT }}
+        script: |
+          # Aller dans le dossier de l'application
+          cd /var/www/intervention-tracker
+          
+          # Sauvegarder les données avant de tirer les changements
+          if [ -d "backend/data" ]; then
+            cp -r backend/data /tmp/intervention-tracker-backup
+          fi
+          
+          # Tirer les derniers changements
+          git pull origin main
+          
+          # Restaurer les données
+          if [ -d "/tmp/intervention-tracker-backup" ]; then
+            cp -r /tmp/intervention-tracker-backup/* backend/data/
+            rm -rf /tmp/intervention-tracker-backup
+          fi
+          
+          # Installer les dépendances backend
+          cd backend
+          npm install --production
+          cd ..
+          
+          # Installer les dépendances frontend et build
+          cd frontend
+          npm install
+          npm run build
+          cd ..
+          
+          # Redémarrer l'application avec PM2
+          pm2 restart intervention-tracker-backend || pm2 start backend/server.js --name intervention-tracker-backend
+          
+          # Vérifier le statut
+          pm2 status
+          
+          echo "✅ Déploiement terminé avec succès!"
