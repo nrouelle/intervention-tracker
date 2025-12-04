@@ -76,17 +76,6 @@ function Login() {
           </button>
         </form>
 
-        <div style={{ 
-          marginTop: '24px', 
-          padding: '16px', 
-          background: 'var(--color-bg-input)', 
-          borderRadius: 'var(--radius-sm)',
-          fontSize: '13px',
-          color: 'var(--color-text-secondary)'
-        }}>
-          <strong>Identifiants par défaut :</strong><br />
-          admin / admin123
-        </div>
       </div>
     </div>
   );
