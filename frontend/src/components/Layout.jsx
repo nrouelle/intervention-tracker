@@ -18,7 +18,7 @@ function Layout() {
             <span className="nav-brand-icon">⏱️</span>
             Intervention Tracker
           </NavLink>
-          
+
           <ul className="nav-links">
             <li>
               <NavLink to="/saisie" className="nav-link">
@@ -36,7 +36,7 @@ function Layout() {
               </NavLink>
             </li>
           </ul>
-          
+
           <div className="nav-actions">
             <div className="user-badge">
               {username}
@@ -47,12 +47,27 @@ function Layout() {
           </div>
         </div>
       </nav>
-      
+
       <main style={{ padding: '32px 0', minHeight: 'calc(100vh - 64px)' }}>
         <div className="container">
           <Outlet />
         </div>
       </main>
+
+      <nav className="bottom-nav">
+        <NavLink to="/saisie" className="bottom-nav-link">
+          <span className="bottom-nav-icon">✏️</span>
+          <span>Saisie</span>
+        </NavLink>
+        <NavLink to="/dashboard" className="bottom-nav-link">
+          <span className="bottom-nav-icon">📊</span>
+          <span>Tableau de bord</span>
+        </NavLink>
+        <NavLink to="/clients" className="bottom-nav-link">
+          <span className="bottom-nav-icon">👥</span>
+          <span>Clients</span>
+        </NavLink>
+      </nav>
     </div>
   );
 }
